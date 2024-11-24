@@ -2,6 +2,26 @@ import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
 
+//DB CONNECTION
+const connectionString = process.env.MONGODB_CONNECTION_STRING;
+export async function connectToDB() {
+  console.log("Attempting to connect to database...");
+  try {
+    if (connectionString) {
+      await mongoose.connect(connectionString);
+      console.log("Connected to the database");
+    } else {
+      console.log("DB connection parameters not correct");
+    }
+  } catch (e) {
+    console.log("Unable to connect to the database");
+  }
+  //mongoose.connect(process.env.MONGODB_CONNECTION_STRING!);
+  //add ! at the end of above command to stop typescript from assuming the value could be null
+}
+
+connectToDB();
+
 //USERS SCHEMA
 const UserSchema = new Schema({
   username: { type: String, required: true, unique: true },
@@ -25,7 +45,7 @@ const ContentSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "UserCollection",
     required: true,
-    validate: async function (value) {
+    validate: async function (value: string) {
       const user = await UserCollection.findById(value);
       if (!user) {
         throw new Error(`User: ${user} does not exist!`);
