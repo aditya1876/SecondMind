@@ -1,56 +1,68 @@
 import zod from "zod";
 import jwt from "jsonwebtoken";
-import { NextFunction, Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 
-//ZOD SCHEMA
-const usernameSchema = zod
-  .string({
-    required_error: "Username is required",
-    invalid_type_error: "Username must be a string",
-  })
-  .min(3, { message: "Username must be between 3-19 characters" })
-  .max(10, { message: "Username must be less than 11 characters" });
+//ZOD SCHEMAS============
+// const usernameSchema = zod
+//   .string()
+//   .min(3, { message: "username should be atleast 3 characters" })
+//   .max(10, { message: "Username should be less than 10 characters." });
+// const passwordSchema = zod
+//   .string()
+//   .min(8, { message: "password should be atleast 8 characters" })
+//   .max(20, { message: "password should be less than 21 characters" });
 
-const passwordSchema = zod
-  .string({
-    required_error: "Password is required",
-    invalid_type_error: "Password must be a string",
-  })
-  .min(8, { message: "Password must be atleast 8 characters" })
-  .max(20, { message: "Password must be less than 21 characters" });
+const userSchema = zod.object({
+  username: zod
+    .string()
+    .min(3, { message: "username should be atleast 3 characters" })
+    .max(10, { message: "Username should be less than 10 characters." }),
+  password: zod
+    .string()
+    .min(8, { message: "password should be atleast 8 characters" })
+    .max(20, { message: "password should be less than 21 characters" })
+    .regex(/^(?:(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()+=_-]).*)$/, {
+      message:
+        "password should contain atleast 1 digit, 1 lowercase, 1 uppercase and 1 special character",
+    }),
+});
 
-export function jwtSign(id: string): string {
-  //sign the id with a jwt token
-  const secret: string = process.env.JWT_SECRET || "";
-  return jwt.sign({ id: id.toString() }, secret);
-}
+//=======================
 
-//MIDDLEWARES
-
+//MIDDLEWARE=============
 export function parseCreds(
   req: Request,
   res: Response,
   next: NextFunction,
 ): void {
-  const usernameParse = usernameSchema.safeParse(req.body.username);
-  const passwordParse = passwordSchema.safeParse(req.body.password);
-
-  if (!usernameParse.success || !passwordParse.success) {
-    res.status(403).json({
-      message: "User credentials are not in proper format testing",
+  const userParse = userSchema.safeParse(req.body);
+  if (!userParse.success) {
+    //get all validation failures
+    let errData = userParse.error.issues; //type Object
+    let errMsg: Array<string> = [];
+    Object.entries(errData).forEach((value, key) => {
+      errMsg.push(value[1].message);
     });
+
+    res.status(411).json({
+      message: "Username or password are not in valid format",
+      failures: errMsg,
+    });
+    return;
   }
+  // const usernameParse = usernameSchema.safeParse(req.body.username);
+  // const passwordParse = passwordSchema.safeParse(req.body.password);
+  // if (!usernameParse.success || !passwordParse.success) {
+  //   res.status(411).json({
+  //     message: "Username or password are not in valid format",
+  //   });
+  //   return;
+  // }
+
+  next();
 }
 
-export function parseCreds1(username: string, password: string): boolean {
-  let flag = false;
-
-  if (
-    usernameSchema.safeParse(username).success &&
-    passwordSchema.safeParse(password).success
-  ) {
-    flag = true;
-  }
-
-  return flag;
-}
+//=======================
+//OTHER FUNCTIONS========
+//
+//=======================
