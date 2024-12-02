@@ -5,10 +5,11 @@ import {
   generateUserToken,
   hashPassword,
   comparePasswords,
+  checkJWT,
+  // UserInRequestObject,
 } from "./commonUtils";
-import { User } from "./dataTypes";
-import { connectToDB, UsersCollection } from "./db";
-import { string } from "zod";
+import { User, Content } from "./dataTypes";
+import { UsersCollection, ContentCollection } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -124,6 +125,92 @@ app.post(
           message: "incorrect username and passoword combination",
         });
       }
+    }
+    console.log("<--");
+  },
+);
+
+app.post(
+  "/api/v1/content",
+  checkJWT,
+  async function (req: Request, res: Response) {
+    console.log("Adding new content-->");
+
+    const content: Content = {
+      type: req.body.type,
+      link: req.body.link,
+      title: req.body.title,
+      tags: req.body.tags,
+    };
+
+    //get the user from request object(added by checkJWT)
+    const username = req.body.username;
+
+    //add entry in to the content table
+    try {
+      console.log("Adding content to db...");
+      const userdata = await UsersCollection.find({
+        username: username,
+      });
+      console.log(`User data for username: [${username}] is: [${userdata}]`);
+      const datamap = new Map(Object.entries(userdata));
+      Object.entries(userdata).find({ _id: Types.ObjectId });
+
+      console.log(`datamap: [${datamap}]`);
+      const userId = datamap.get("_id");
+      console.log(`Userid: [${userId}]`);
+      const entryAdded = await ContentCollection.create({
+        type: content.type,
+        link: content.link,
+        title: content.title,
+        tags: content.tags,
+        userId: userId,
+      });
+      console.log(`Content addition status: [${entryAdded}]`);
+    } catch (e) {
+      console.log("Error during addition of content in content table");
+      console.log(e);
+      res.status(500).json({
+        message: "Something  went wrong, please try again",
+      });
+    }
+    console.log("<--");
+  },
+);
+
+app.get(
+  "/api/v1/content",
+  checkJWT,
+  async function (req: Request, res: Response) {
+    console.log("Display all content for the user -->");
+
+    //get the username from reqest (added by checkJWT)
+    const username = req.body.username;
+
+    try {
+      console.log(`Getting content for user: [${username}]`);
+      const userData = await UsersCollection.find({
+        username: username,
+      });
+      console.log(`userData: [${userData}]`);
+      const datamap = new Map(Object.entries(userData));
+      const userId = datamap.get("userId");
+      const allUserData = await ContentCollection.find({
+        userId: userId,
+      });
+      console.log(`All user data: [${allUserData}]`);
+
+      res.status(200).json({
+        allData: allUserData,
+      });
+    } catch (e) {
+      console.log(
+        `Error occured during fetching user data for user: [${username}]`,
+      );
+      console.log(e);
+      res.status(500).json({
+        message: "Something went wrong, please try again",
+      });
     }
     console.log("<--");
   },

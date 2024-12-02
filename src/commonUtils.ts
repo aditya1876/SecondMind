@@ -3,6 +3,13 @@ import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 
+// export interface UserInRequestObject extends Request {
+//   username?: string;
+// }
+
+//CONSTANTS==============
+const jwt_secret = process.env.JWT_SECRET!;
+//=======================
 //ZOD SCHEMAS============
 const userSchema = zod.object({
   username: zod
@@ -42,6 +49,39 @@ export function parseCreds(
     });
     return;
   }
+
+  next();
+}
+
+export function checkJWT(
+  // req: UserInRequestObject,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  console.log("Verifying user");
+
+  const token: string | undefined = req.headers.authorization;
+
+  if (typeof token === "undefined") {
+    console.log("Token not found in authroization headers");
+    res.status(403).json({
+      message: "User is not authenticated",
+    });
+  }
+
+  const verifiedToken = jwt.verify(token!, jwt_secret);
+  if (!verifiedToken) {
+    console.log(`User with token [${token}] is not authenticated`);
+    res.status(403).json({
+      message: "User is not authenticated. Please signin first!",
+    });
+  }
+  console.log("User Verified using jwt");
+
+  //Add username to the request object
+  const data = Object.values(verifiedToken);
+  req.body.username = data[0];
 
   next();
 }

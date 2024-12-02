@@ -21,12 +21,6 @@ const ContentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "UsersCollection",
     required: true,
-    validate: async function (value: string): Promise<void> {
-      const user = await UsersCollection.findById(value);
-      if (!user) {
-        throw new Error(`DB: User [${user}] does not exist in DB!`);
-      }
-    },
   },
 });
 
